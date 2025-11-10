@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>React Практикум: 3 задания</title>
+    <style>
+      :root { --bg:#0b1020; --card:#111831; --text:#e9ecf1; --muted:#98a2b3; --accent:#3b82f6; --ok:#22c55e; --danger:#ef4444; }
+      *{box-sizing:border-box}
+      body{margin:0; font-family:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; background:var(--bg); color:var(--text)}
+      .container{max-width:1100px; margin:40px auto; padding:0 20px}
+      .title{font-size:28px; font-weight:800; letter-spacing:.3px; margin-bottom:18px}
+      .grid{display:grid; gap:20px; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr))}
+      .card{background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.25)}
+      .card h2{margin:0 0 10px; font-size:20px}
+      .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+      .btn{appearance:none; border:1px solid rgba(255,255,255,.12); background:#1b2342; color:var(--text); padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600}
+      .btn:disabled{opacity:.5; cursor:not-allowed}
+      .btn.primary{background:var(--accent); border-color:transparent}
+      .btn.danger{background:#2a2135; border-color:#3b2a44; color:#ffd7e1}
+      .muted{color:var(--muted)}
+      .counter{font-size:48px; font-weight:900}
+      .badge{display:inline-block; padding:4px 8px; border-radius:20px; background:#13325a; color:#a8d2ff; font-weight:700}
+      input, select{background:#0f1530; border:1px solid rgba(255,255,255,.12); color:var(--text); padding:10px 12px; border-radius:10px; outline:none; width:100%}
+      ul{list-style:none; padding:0; margin:0}
+      li{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed rgba(255,255,255,.08)}
+      .task-text{flex:1; word-break:break-word}
+      .filters{display:flex; gap:8px; align-items:center}
+      .chip{padding:6px 10px; border-radius:999px; background:#0e172b; border:1px solid rgba(255,255,255,.04); cursor:pointer}
+      .chip.active{background:var(--accent); color:#042042}
+      .empty{opacity:.6; padding:12px; text-align:center}
+
+      /* Quiz specific */
+      .progress-wrap{background:#071026; border-radius:8px; padding:6px; margin-top:10px}
+      .progress-bar{height:12px; border-radius:6px; background:linear-gradient(90deg,var(--accent),#7cc0ff)}
+      .option{display:block; padding:12px; border-radius:8px; margin:8px 0; background:rgba(255,255,255,0.02); cursor:pointer; border:1px solid rgba(255,255,255,0.03)}
+      .option input{margin-right:10px}
+      .timer{font-weight:700; color:#ffd36b}
+      .result{font-size:20px; font-weight:800; color:var(--ok)}
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+      const { useState, useEffect, useRef } = React;
+
+      /* ---------------- QUESTIONS ---------------- */
+      const QUESTIONS = [
+        { q: 'Какой хук используют для локального состояния в компоненте?', options: ['useState', 'useEffect', 'useMemo', 'useRef'], answer: 0 },
+        { q: 'Какая функция отображает список в React чаще всего?', options: ['forEach()', 'map()', 'filter()', 'reduce()'], answer: 1 },
+        { q: 'Какой атрибут нужен списочным элементам для стабильного рендера?', options: ['key', 'id', 'name', 'role'], answer: 0 },
+        { q: 'Какой хук используют для побочных эффектов (запросы, синхронизация)?', options: ['useEffect', 'useState', 'useCallback', 'useId'], answer: 0 },
+        { q: 'В JSX как указываются обработчики событий?', options: ['onclick', 'onClick', 'handleClick', 'on-click'], answer: 1 },
+      ];
+
+      /* ---------------- Task3: Quiz ---------------- */
+      function Task3(){
+        const TOTAL = QUESTIONS.length;
+        const TIME_PER_Q = 20; // seconds
+
+        const [index, setIndex] = useState(0);               // текущий вопрос 0..TOTAL-1
+        const [selected, setSelected] = useState(null);      // выбранный вариант на текущем вопросе (0..n-1)
+        const [answers, setAnswers] = useState(Array(TOTAL).fill(null)); // выбранные индексы или null
+        const [finished, setFinished] = useState(false);
+        const [timeLeft, setTimeLeft] = useState(TIME_PER_Q);
+        const timerRef = useRef(null);
+
+        // запуск таймера на каждый вопрос
+        useEffect(() => {
+          setTimeLeft(TIME_PER_Q);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          timerRef.current = setInterval(() => {
+            setTimeLeft(t => {
+              if (t <= 1) {
+                // время вышло — авто-переход
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+                handleNextAuto();
+                return 0;
+              }
+              return t - 1;
+            });
+          }, 1000);
+
+          return () => {
+            if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+          };
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [index]); // перезапускать при смене вопроса
+
+        // обработка выбора варианта
+        function choose(i){
+          setSelected(i);
+        }
+
+        // Нажатие "Далее" — только если выбран ответ
+        function handleNext(){
+          if (selected === null) return;
+          const nextAnswers = answers.slice();
+          nextAnswers[index] = selected;
+          setAnswers(nextAnswers);
+          setSelected(null);
+          if (index + 1 < TOTAL) {
+            setIndex(index + 1);
+          } else {
+            // конец — считаем результат
+            setFinished(true);
+            // очистим таймер
+            if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+          }
+        }
+
+        // Авто-переход при таймауте: если пользователь не ответил, сохраняем null (или -1)
+        function handleNextAuto(){
+          const nextAnswers = answers.slice();
+          // если пользователь успел выбрать в последний момент, selected может быть != null
+          nextAnswers[index] = selected === null ? null : selected;
+          setAnswers(nextAnswers);
+          setSelected(null);
+          if (index + 1 < TOTAL) {
+            setIndex(index + 1);
+          } else {
+            setFinished(true);
+          }
+        }
+
+        // Подсчитать результат
+        const score = answers.reduce((s, a, i) => {
+          if (a === QUESTIONS[i].answer) return s + 1;
+          return s;
+        }, 0);
+
+        function restart(){
+          setIndex(0);
+          setSelected(null);
+          setAnswers(Array(TOTAL).fill(null));
+          setFinished(false);
+          setTimeLeft(TIME_PER_Q);
+        }
+
+        // Прогресс %
+        const progress = Math.round(((index) / TOTAL) * 100);
+
+        // Блок финала
+        if (finished) {
+          return (
+            <div className="card" role="region" aria-label="Квиз результаты">
+              <h2>Задание 3 — Мини-квиз (результат)</h2>
+              <div style={{marginTop:12}}>
+                <div className="result">Ваш результат: {score} / {TOTAL}</div>
+                <p className="muted" style={{marginTop:8}}>Подсчёт: {answers.map((a,i)=> a===QUESTIONS[i].answer ? '✓' : '✕').join(' ')}</p>
+                <div style={{marginTop:16}}>
+                  <button className="btn primary" onClick={restart}>Сыграть ещё раз</button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Текущий вопрос
+        const cur = QUESTIONS[index];
+
+        return (
+          <div className="card" role="region" aria-label="Квиз">
+            <h2>Задание 3 — Мини-квиз</h2>
+
+            <div style={{marginTop:12}}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                <div>Вопрос {index + 1} / {TOTAL}</div>
+                <div className="timer">Осталось: {timeLeft}s</div>
+              </div>
+
+              <div className="progress-wrap" aria-hidden="true" style={{marginTop:8}}>
+                <div className="progress-bar" style={{width: `${((index + (selected !== null ? 1 : 0)) / TOTAL) * 100}%`}} />
+              </div>
+
+              <h3 style={{marginTop:12}}>{cur.q}</h3>
+
+              <div role="radiogroup" aria-label={`Варианты ответа для вопроса ${index + 1}`}>
+                {cur.options.map((opt, i) => {
+                  const checked = selected === i;
+                  return (
+                    <label key={i} className="option" style={{borderColor: checked ? 'rgba(123, 181, 255, 0.6)' : undefined, background: checked ? 'rgba(59,130,246,0.08)' : undefined}}>
+                      <input
+                        type="radio"
+                        name={"q" + index}
+                        checked={checked}
+                        onChange={() => choose(i)}
+                        />
+                      {opt}
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div style={{display:'flex', justifyContent:'space-between', marginTop:12, alignItems:'center'}}>
+                <div className="muted">Вы выбрали: {selected === null ? '—' : cur.options[selected]}</div>
+                <div style={{display:'flex', gap:8}}>
+                  <button className="btn" onClick={() => {
+                    // возврат к предыдущему вопросу — доступно, если index > 0
+                    if (index === 0) return;
+                    // сохраняем текущ выбор before leaving
+                    const nextAnswers = answers.slice();
+                    nextAnswers[index] = selected === null ? null : selected;
+                    setAnswers(nextAnswers);
+                    setSelected(answers[index]); // restore previous stored selection for target
+                    setIndex(index - 1);
+                  }} disabled={index === 0}>Назад</button>
+
+                  <button className="btn primary" onClick={handleNext} disabled={selected === null}>
+                    {index + 1 === TOTAL ? 'Закончить' : 'Далее'}
+                  </button>
+                </div>
+              </div>
+
+              <p className="muted" style={{marginTop:8}}>Примечание: если не ответить за {TIME_PER_Q} сек — произойдёт автоматический переход далее.</p>
+            </div>
+          </div>
+        );
+      }
+
+      /* ---------------- Task1 и Task2 (свернуты - те же реализации) ---------------- */
+      function Task1(){
+        const [count, setCount] = useState(0);
+        const inc   = () => setCount(c => c + 1);
+        const dec   = () => setCount(c => Math.max(0, c - 1));
+        const reset = () => setCount(0);
+
+        useEffect(() => {
+          const onKey = (e) => {
+            if (e.key === 'ArrowUp')   { e.preventDefault(); inc(); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); dec(); }
+          };
+          window.addEventListener('keydown', onKey, { passive:false });
+          return () => window.removeEventListener('keydown', onKey);
+        }, []);
+
+        const showCongrats = count > 0 && count % 10 === 0;
+
+        return (
+          <div className="card" role="region" aria-label="Счётчик">
+            <h2>Задание 1 — Счётчик («кликер»)</h2>
+
+            <div className="row" style={{justifyContent:'space-between', marginTop:6}}>
+              <div className="counter" aria-live="polite">{count}</div>
+              {showCongrats && <span className="badge">Молодец!</span>}
+            </div>
+
+            <div className="row" style={{marginTop:12}}>
+              <button className="btn" onClick={dec} disabled={count === 0} title="ArrowDown">−1</button>
+              <button className="btn primary" onClick={inc} title="ArrowUp">+1</button>
+              <button className="btn danger" onClick={reset} disabled={count === 0}>Reset</button>
+            </div>
+
+            <p className="muted" style={{marginTop:8}}>Горячие клавиши: ↑ = +1, ↓ = −1</p>
+          </div>
+        );
+      }
+
+
+function Task2(){
+    const [tasks, setTasks] = useState([]);
+    const [newTaskText, setNewTaskText] = useState('');
+    const [filter, setFilter] = useState('all');
+
+    useEffect(() => {
+        const savedTasks = localStorage.getItem('tasks')
+        if (savedTasks) {
+            setTasks(JSON.parse(savedTasks))
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+    }, [tasks]);
+
+    const handleAddTask = () => {
+        if (newTaskText.trim() === '') return;
+        const newTask = {
+            id: Date.now(),
+            text: newTaskText.trim(),
+            completed: false
+        };
+        setTasks([...tasks, newTask]);
+        setNewTaskText('');
+    }
+
+    const handleKeyPress = (event) => {
+        if (event.key === 'Enter') {
+            handleAddTask();
+        }
+    }
+
+    const toggleTask = (taskId) => {
+        setTasks(tasks.map(task =>
+            task.id === taskId ? {...task, completed: !task.completed } : task
+        ));
+    };
+
+    const deleteTask = (taskId) => {
+        setTasks(tasks.filter(task => task.id !== taskId));
+    };
+
+    const filteredTasks = tasks.filter(task => {
+        if (filter === 'active') return !task.completed;
+        if (filter === 'completed') return task.completed;
+        return true;
+    });
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(task => task.completed).length;
+
+    return(
+        <div className="card">
+            <h2>Задание 2: Список задач</h2>
+            <section className="row">
+                <button 
+                className={`btn ${filter === 'all' ? 'primary' : ''}`}
+                onClick={() => setFilter('all')}>
+                    Все     
+                </button>
+
+                <button 
+                className={`btn ${filter === 'completed' ? 'primary' : ''}`}
+                onClick={() => setFilter('completed')}>
+                    Выполненные     
+                </button>
+
+                <button 
+                className={`btn ${filter === 'active' ? 'primary' : ''}`}
+                onClick={() => setFilter('active')}>
+                    Активные
+                </button>    
+            </section>
+
+
+            {filteredTasks.length === 0 ? (
+                <div style={{textAlign: 'center', color: 'var(--muted)', padding: '20px'}}>
+                    {tasks.length === 0 ? 'Нет задач' : "Задачи не найдены"}
+                </div>
+            ) : (
+                <ul>
+                   {filteredTasks.map(task => (
+                    <li key={task.id} style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start'}}>
+                        <input 
+                            type="checkbox"
+                            checked={task.completed} 
+                            onChange={() => toggleTask(task.id)}
+                            style={{
+                                cursor: 'pointer',
+                                width: '16px',        
+                                height: '16px',      
+                                flex: 'none'         
+                            }}
+                        />
+                        <span style={{            
+                            flex: 1,                
+                            textDecoration: task.completed ? 'line-through' : 'none',
+                            opacity: task.completed ? 0.75 : 1,
+                            marginRight: '10px',
+                            marginLeft: '10px',
+                            textAlign: 'left'
+                        }}>
+                            {task.text}
+                        </span>
+                        <button 
+                            className="btn danger"
+                            onClick={() => deleteTask(task.id)}
+                            style={{padding: '5px 10px', fontSize: '12px', marginLeft: '10px'}}
+                        >
+                            Удалить
+                        </button>
+                    </li>
+                   ))} 
+                </ul>
+            )}
+
+            <form className="row" style={{marginBottom: '20px'}}>
+                <input 
+                    type="text"
+                    value={newTaskText}
+                    onChange={(event) => setNewTaskText(event.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Введите новую задачу" 
+                    style={{flex: 1}}
+                />
+                <button className="btn primary" onClick={handleAddTask}>
+                    Добавить
+                </button>
+            </form>
+            
+        </div>
+    );
+}
+
+
+      function App(){
+        return (
+          <div className="container">
+            <div className="title">React.js Практикум: 3 задания (всё в браузере)</div>
+            <div className="grid">
+              <Task1 />
+              <Task2 />
+              <Task3 />
+              <div className="card">
+                <h2>Подсказки</h2>
+                <p className="muted">Task3: таймер автоматически переходит к следующему вопросу при таймауте. Нельзя перейти вручную, если не выбран ответ.</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App/>);
+    </script>
+  </body>
+</html>
