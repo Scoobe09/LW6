@@ -49,7 +49,6 @@
     <script type="text/babel">
       const { useState, useEffect, useRef } = React;
 
-      /* ---------------- QUESTIONS ---------------- */
       const QUESTIONS = [
         { q: 'Какой хук используют для локального состояния в компоненте?', options: ['useState', 'useEffect', 'useMemo', 'useRef'], answer: 0 },
         { q: 'Какая функция отображает список в React чаще всего?', options: ['forEach()', 'map()', 'filter()', 'reduce()'], answer: 1 },
@@ -58,19 +57,17 @@
         { q: 'В JSX как указываются обработчики событий?', options: ['onclick', 'onClick', 'handleClick', 'on-click'], answer: 1 },
       ];
 
-      /* ---------------- Task3: Quiz ---------------- */
       function Task3(){
         const TOTAL = QUESTIONS.length;
-        const TIME_PER_Q = 20; // seconds
+        const TIME_PER_Q = 20; 
 
-        const [index, setIndex] = useState(0);               // текущий вопрос 0..TOTAL-1
-        const [selected, setSelected] = useState(null);      // выбранный вариант на текущем вопросе (0..n-1)
-        const [answers, setAnswers] = useState(Array(TOTAL).fill(null)); // выбранные индексы или null
+        const [index, setIndex] = useState(0);              
+        const [selected, setSelected] = useState(null);      
+        const [answers, setAnswers] = useState(Array(TOTAL).fill(null)); 
         const [finished, setFinished] = useState(false);
         const [timeLeft, setTimeLeft] = useState(TIME_PER_Q);
         const timerRef = useRef(null);
 
-        // запуск таймера на каждый вопрос
         useEffect(() => {
           setTimeLeft(TIME_PER_Q);
           if (timerRef.current) {
@@ -80,7 +77,6 @@
           timerRef.current = setInterval(() => {
             setTimeLeft(t => {
               if (t <= 1) {
-                // время вышло — авто-переход
                 clearInterval(timerRef.current);
                 timerRef.current = null;
                 handleNextAuto();
@@ -93,15 +89,12 @@
           return () => {
             if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
           };
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [index]); // перезапускать при смене вопроса
+        }, [index]); 
 
-        // обработка выбора варианта
         function choose(i){
           setSelected(i);
         }
 
-        // Нажатие "Далее" — только если выбран ответ
         function handleNext(){
           if (selected === null) return;
           const nextAnswers = answers.slice();
@@ -111,17 +104,13 @@
           if (index + 1 < TOTAL) {
             setIndex(index + 1);
           } else {
-            // конец — считаем результат
             setFinished(true);
-            // очистим таймер
             if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
           }
         }
 
-        // Авто-переход при таймауте: если пользователь не ответил, сохраняем null (или -1)
         function handleNextAuto(){
           const nextAnswers = answers.slice();
-          // если пользователь успел выбрать в последний момент, selected может быть != null
           nextAnswers[index] = selected === null ? null : selected;
           setAnswers(nextAnswers);
           setSelected(null);
@@ -132,7 +121,6 @@
           }
         }
 
-        // Подсчитать результат
         const score = answers.reduce((s, a, i) => {
           if (a === QUESTIONS[i].answer) return s + 1;
           return s;
@@ -145,11 +133,8 @@
           setFinished(false);
           setTimeLeft(TIME_PER_Q);
         }
-
-        // Прогресс %
         const progress = Math.round(((index) / TOTAL) * 100);
 
-        // Блок финала
         if (finished) {
           return (
             <div className="card" role="region" aria-label="Квиз результаты">
@@ -164,8 +149,6 @@
             </div>
           );
         }
-
-        // Текущий вопрос
         const cur = QUESTIONS[index];
 
         return (
@@ -205,13 +188,11 @@
                 <div className="muted">Вы выбрали: {selected === null ? '—' : cur.options[selected]}</div>
                 <div style={{display:'flex', gap:8}}>
                   <button className="btn" onClick={() => {
-                    // возврат к предыдущему вопросу — доступно, если index > 0
                     if (index === 0) return;
-                    // сохраняем текущ выбор before leaving
                     const nextAnswers = answers.slice();
                     nextAnswers[index] = selected === null ? null : selected;
                     setAnswers(nextAnswers);
-                    setSelected(answers[index]); // restore previous stored selection for target
+                    setSelected(answers[index]); 
                     setIndex(index - 1);
                   }} disabled={index === 0}>Назад</button>
 
@@ -227,7 +208,6 @@
         );
       }
 
-      /* ---------------- Task1 и Task2 (свернуты - те же реализации) ---------------- */
       function Task1(){
         const [count, setCount] = useState(0);
         const inc   = () => setCount(c => c + 1);
@@ -317,7 +297,6 @@ function Task2(){
 
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(task => task.completed).length;
-
     return(
         <div className="card">
             <h2>Задание 2: Список задач</h2>
@@ -382,7 +361,6 @@ function Task2(){
                    ))} 
                 </ul>
             )}
-
             <form className="row" style={{marginBottom: '20px'}}>
                 <input 
                     type="text"
@@ -400,12 +378,10 @@ function Task2(){
         </div>
     );
 }
-
-
       function App(){
         return (
           <div className="container">
-            <div className="title">React.js Практикум: 3 задания (всё в браузере)</div>
+            <div className="title">React.js Практикум: 3 задания</div>
             <div className="grid">
               <Task1 />
               <Task2 />
